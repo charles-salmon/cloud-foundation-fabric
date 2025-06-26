@@ -108,35 +108,6 @@ resource "google_cloud_run_v2_job" "job" {
               mount_path = volume_mounts.value
             }
           }
-          dynamic "liveness_probe" {
-            for_each = containers.value.liveness_probe == null ? [] : [""]
-            content {
-              initial_delay_seconds = containers.value.liveness_probe.initial_delay_seconds
-              timeout_seconds       = containers.value.liveness_probe.timeout_seconds
-              period_seconds        = containers.value.liveness_probe.period_seconds
-              failure_threshold     = containers.value.liveness_probe.failure_threshold
-              dynamic "http_get" {
-                for_each = containers.value.liveness_probe.http_get == null ? [] : [""]
-                content {
-                  path = containers.value.liveness_probe.http_get.path
-                  dynamic "http_headers" {
-                    for_each = coalesce(containers.value.liveness_probe.http_get.http_headers, tomap({}))
-                    content {
-                      name  = http_headers.key
-                      value = http_headers.value
-                    }
-                  }
-                }
-              }
-              dynamic "grpc" {
-                for_each = containers.value.liveness_probe.grpc == null ? [] : [""]
-                content {
-                  port    = containers.value.liveness_probe.grpc.port
-                  service = containers.value.liveness_probe.grpc.service
-                }
-              }
-            }
-          }
           dynamic "startup_probe" {
             for_each = containers.value.startup_probe == null ? [] : [""]
             content {
