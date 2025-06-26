@@ -119,6 +119,7 @@ resource "google_cloud_run_v2_job" "job" {
                 for_each = containers.value.startup_probe.http_get == null ? [] : [""]
                 content {
                   path = containers.value.startup_probe.http_get.path
+                  port = containers.value.startup_probe.http_get.port
                   dynamic "http_headers" {
                     for_each = coalesce(containers.value.startup_probe.http_get.http_headers, tomap({}))
                     content {
