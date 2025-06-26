@@ -36,7 +36,7 @@ resource "google_cloud_run_v2_job" "job" {
         for_each = local.connector == null ? [] : [""]
         content {
           connector = local.connector
-          egress    = try(var.revision.vpc_access.egress, null)
+          egress = try(var.revision.vpc_access.egress, null)
         }
       }
       dynamic "vpc_access" {
@@ -56,10 +56,11 @@ resource "google_cloud_run_v2_job" "job" {
       dynamic "containers" {
         for_each = var.containers
         content {
-          name    = containers.key
-          image   = containers.value.image
-          command = containers.value.command
-          args    = containers.value.args
+          name       = containers.key
+          image      = containers.value.image
+          depends_on = containers.value.depends_on
+          command    = containers.value.command
+          args       = containers.value.args
           dynamic "env" {
             for_each = coalesce(containers.value.env, tomap({}))
             content {
@@ -93,7 +94,7 @@ resource "google_cloud_run_v2_job" "job" {
             }
           }
           dynamic "volume_mounts" {
-            for_each = { for k, v in coalesce(containers.value.volume_mounts, tomap({})) : k => v if k != "cloudsql" }
+            for_each = {for k, v in coalesce(containers.value.volume_mounts, tomap({})) : k => v if k != "cloudsql"}
             content {
               name       = volume_mounts.key
               mount_path = volume_mounts.value
@@ -101,16 +102,80 @@ resource "google_cloud_run_v2_job" "job" {
           }
           # CloudSQL is the last mount in the list returned by API
           dynamic "volume_mounts" {
-            for_each = { for k, v in coalesce(containers.value.volume_mounts, tomap({})) : k => v if k == "cloudsql" }
+            for_each = {for k, v in coalesce(containers.value.volume_mounts, tomap({})) : k => v if k == "cloudsql"}
             content {
               name       = volume_mounts.key
               mount_path = volume_mounts.value
             }
           }
+          dynamic "liveness_probe" {
+            for_each = containers.value.liveness_probe == null ? [] : [""]
+            content {
+              initial_delay_seconds = containers.value.liveness_probe.initial_delay_seconds
+              timeout_seconds       = containers.value.liveness_probe.timeout_seconds
+              period_seconds        = containers.value.liveness_probe.period_seconds
+              failure_threshold     = containers.value.liveness_probe.failure_threshold
+              dynamic "http_get" {
+                for_each = containers.value.liveness_probe.http_get == null ? [] : [""]
+                content {
+                  path = containers.value.liveness_probe.http_get.path
+                  dynamic "http_headers" {
+                    for_each = coalesce(containers.value.liveness_probe.http_get.http_headers, tomap({}))
+                    content {
+                      name  = http_headers.key
+                      value = http_headers.value
+                    }
+                  }
+                }
+              }
+              dynamic "grpc" {
+                for_each = containers.value.liveness_probe.grpc == null ? [] : [""]
+                content {
+                  port    = containers.value.liveness_probe.grpc.port
+                  service = containers.value.liveness_probe.grpc.service
+                }
+              }
+            }
+          }
+          dynamic "startup_probe" {
+            for_each = containers.value.startup_probe == null ? [] : [""]
+            content {
+              initial_delay_seconds = containers.value.startup_probe.initial_delay_seconds
+              timeout_seconds       = containers.value.startup_probe.timeout_seconds
+              period_seconds        = containers.value.startup_probe.period_seconds
+              failure_threshold     = containers.value.startup_probe.failure_threshold
+              dynamic "http_get" {
+                for_each = containers.value.startup_probe.http_get == null ? [] : [""]
+                content {
+                  path = containers.value.startup_probe.http_get.path
+                  dynamic "http_headers" {
+                    for_each = coalesce(containers.value.startup_probe.http_get.http_headers, tomap({}))
+                    content {
+                      name  = http_headers.key
+                      value = http_headers.value
+                    }
+                  }
+                }
+              }
+              dynamic "tcp_socket" {
+                for_each = containers.value.startup_probe.tcp_socket == null ? [] : [""]
+                content {
+                  port = containers.value.startup_probe.tcp_socket.port
+                }
+              }
+              dynamic "grpc" {
+                for_each = containers.value.startup_probe.grpc == null ? [] : [""]
+                content {
+                  port    = containers.value.startup_probe.grpc.port
+                  service = containers.value.startup_probe.grpc.service
+                }
+              }
+            }
+          }
         }
       }
       dynamic "volumes" {
-        for_each = { for k, v in var.volumes : k => v if v.cloud_sql_instances == null }
+        for_each = {for k, v in var.volumes : k => v if v.cloud_sql_instances == null}
         content {
           name = volumes.key
           dynamic "secret" {
@@ -155,7 +220,7 @@ resource "google_cloud_run_v2_job" "job" {
       }
       # CloudSQL is the last volume in the list returned by API
       dynamic "volumes" {
-        for_each = { for k, v in var.volumes : k => v if v.cloud_sql_instances != null }
+        for_each = {for k, v in var.volumes : k => v if v.cloud_sql_instances != null}
         content {
           name = volumes.key
           dynamic "cloud_sql_instance" {
@@ -198,7 +263,7 @@ resource "google_cloud_run_v2_job" "job_unmanaged" {
         for_each = local.connector == null ? [] : [""]
         content {
           connector = local.connector
-          egress    = try(var.revision.vpc_access.egress, null)
+          egress = try(var.revision.vpc_access.egress, null)
         }
       }
       dynamic "vpc_access" {
@@ -255,7 +320,7 @@ resource "google_cloud_run_v2_job" "job_unmanaged" {
             }
           }
           dynamic "volume_mounts" {
-            for_each = { for k, v in coalesce(containers.value.volume_mounts, tomap({})) : k => v if k != "cloudsql" }
+            for_each = {for k, v in coalesce(containers.value.volume_mounts, tomap({})) : k => v if k != "cloudsql"}
             content {
               name       = volume_mounts.key
               mount_path = volume_mounts.value
@@ -263,7 +328,7 @@ resource "google_cloud_run_v2_job" "job_unmanaged" {
           }
           # CloudSQL is the last mount in the list returned by API
           dynamic "volume_mounts" {
-            for_each = { for k, v in coalesce(containers.value.volume_mounts, tomap({})) : k => v if k == "cloudsql" }
+            for_each = {for k, v in coalesce(containers.value.volume_mounts, tomap({})) : k => v if k == "cloudsql"}
             content {
               name       = volume_mounts.key
               mount_path = volume_mounts.value
@@ -272,7 +337,7 @@ resource "google_cloud_run_v2_job" "job_unmanaged" {
         }
       }
       dynamic "volumes" {
-        for_each = { for k, v in var.volumes : k => v if v.cloud_sql_instances == null }
+        for_each = {for k, v in var.volumes : k => v if v.cloud_sql_instances == null}
         content {
           name = volumes.key
           dynamic "secret" {
@@ -317,7 +382,7 @@ resource "google_cloud_run_v2_job" "job_unmanaged" {
       }
       # CloudSQL is the last volume in the list returned by API
       dynamic "volumes" {
-        for_each = { for k, v in var.volumes : k => v if v.cloud_sql_instances != null }
+        for_each = {for k, v in var.volumes : k => v if v.cloud_sql_instances != null}
         content {
           name = volumes.key
           dynamic "cloud_sql_instance" {
