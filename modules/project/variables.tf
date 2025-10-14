@@ -40,6 +40,25 @@ variable "contacts" {
   nullable    = false
 }
 
+variable "context" {
+  description = "Context-specific interpolations."
+  type = object({
+    condition_vars        = optional(map(map(string)), {})
+    custom_roles          = optional(map(string), {})
+    folder_ids            = optional(map(string), {})
+    kms_keys              = optional(map(string), {})
+    iam_principals        = optional(map(string), {})
+    notification_channels = optional(map(string), {})
+    logging_bucket_names  = optional(map(string), {})
+    project_ids           = optional(map(string), {})
+    tag_keys              = optional(map(string), {})
+    tag_values            = optional(map(string), {})
+    vpc_sc_perimeters     = optional(map(string), {})
+  })
+  default  = {}
+  nullable = false
+}
+
 variable "custom_roles" {
   description = "Map of role name => list of permissions to create in this project."
   type        = map(list(string))
@@ -86,14 +105,12 @@ variable "descriptive_name" {
 variable "factories_config" {
   description = "Paths to data files and folders that enable factory functionality."
   type = object({
-    custom_roles  = optional(string)
-    observability = optional(string)
-    org_policies  = optional(string)
-    quotas        = optional(string)
-    context = optional(object({
-      notification_channels = optional(map(string), {})
-      org_policies          = optional(map(map(string)), {})
-    }), {})
+    custom_roles           = optional(string)
+    observability          = optional(string)
+    org_policies           = optional(string)
+    quotas                 = optional(string)
+    scc_sha_custom_modules = optional(string)
+    tags                   = optional(string)
   })
   nullable = false
   default  = {}
@@ -150,8 +167,12 @@ variable "parent" {
   type        = string
   default     = null
   validation {
-    condition     = var.parent == null || can(regex("(organizations|folders)/[0-9]+", var.parent))
-    error_message = "Parent must be of the form folders/folder_id or organizations/organization_id."
+    condition = (
+      var.parent == null ||
+      startswith(coalesce(var.parent, "-"), "$") ||
+      can(regex("(organizations|folders)/[0-9]+", coalesce(var.parent, "-")))
+    )
+    error_message = "Parent must be of the form folders/folder_id or organizations/organization_id or refer to a context variable via the '$' prefix."
   }
 }
 
@@ -169,7 +190,7 @@ variable "project_reuse" {
   description = "Reuse existing project if not null. If name and number are not passed in, a data source is used."
   type = object({
     use_data_source = optional(bool, true)
-    project_attributes = optional(object({
+    attributes = optional(object({
       name             = string
       number           = number
       services_enabled = optional(list(string), [])
@@ -179,9 +200,9 @@ variable "project_reuse" {
   validation {
     condition = (
       try(var.project_reuse.use_data_source, null) != false ||
-      try(var.project_reuse.project_attributes, null) != null
+      try(var.project_reuse.attributes, null) != null
     )
-    error_message = "Reuse datasource can be disabled only if project attributes are set."
+    error_message = "Reuse datasource can be disabled only if attributes are set."
   }
 }
 
@@ -234,7 +255,16 @@ variable "shared_vpc_service_config" {
   description = "Configures this project as a Shared VPC service project (mutually exclusive with shared_vpc_host_config)."
   # the list of valid service identities is in service-agents.yaml
   type = object({
-    host_project             = string
+    host_project = string
+    iam_bindings_additive = optional(map(object({
+      member = string
+      role   = string
+      condition = optional(object({
+        expression  = string
+        title       = string
+        description = optional(string)
+      }))
+    })), {})
     network_users            = optional(list(string), [])
     service_agent_iam        = optional(map(list(string)), {})
     service_agent_subnet_iam = optional(map(list(string)), {})
@@ -273,8 +303,10 @@ variable "skip_delete" {
 variable "universe" {
   description = "GCP universe where to deploy the project. The prefix will be prepended to the project id."
   type = object({
-    prefix               = string
-    unavailable_services = optional(list(string), [])
+    prefix                         = string
+    forced_jit_service_identities  = optional(list(string), [])
+    unavailable_services           = optional(list(string), [])
+    unavailable_service_identities = optional(list(string), [])
   })
   default = null
 }
@@ -282,9 +314,8 @@ variable "universe" {
 variable "vpc_sc" {
   description = "VPC-SC configuration for the project, use when `ignore_changes` for resources is set in the VPC-SC module."
   type = object({
-    perimeter_name    = string
-    perimeter_bridges = optional(list(string), [])
-    is_dry_run        = optional(bool, false)
+    perimeter_name = string
+    is_dry_run     = optional(bool, false)
   })
   default = null
 }

@@ -42,13 +42,62 @@ variable "alert_config" {
 variable "dns" {
   description = "DNS configuration."
   type = object({
-    gcp_domain     = optional(string, "gcp.example.com")
-    onprem_domain  = optional(string, "onprem.example.com")
+    gcp_domain = optional(string, "gcp.example.com")
+    onprem_domains = optional(list(object({
+      domain             = string
+      overwrite_resolver = optional(list(string), null)
+    })), [])
     dev_resolvers  = optional(list(string), [])
     prod_resolvers = optional(list(string), [])
   })
   default  = {}
   nullable = false
+  validation {
+    condition = !contains(
+      [
+        length(var.dns.onprem_domains) > 0,
+        length(var.dns.dev_resolvers) > 0,
+        length(var.dns.prod_resolvers) > 0
+      ],
+      true
+      ) || !contains(
+      [
+        length(var.dns.onprem_domains) > 0,
+        length(var.dns.dev_resolvers) > 0,
+        length(var.dns.prod_resolvers) > 0
+      ],
+      false
+    )
+    error_message = "The 'onprem_domains', 'dev_resolvers', and 'prod_resolvers' attributes must all be specified together. Please provide values for all three, or leave all three empty."
+  }
+}
+
+variable "environments" {
+  # tfdoc:variable:source 0-globals
+  description = "Environment names."
+  type = map(object({
+    name       = string
+    tag_name   = string
+    is_default = optional(bool, false)
+  }))
+  nullable = false
+  default = {
+    dev = {
+      name     = "Development"
+      tag_name = "development"
+    }
+    prod = {
+      name       = "Production"
+      tag_name   = "production"
+      is_default = true
+    }
+  }
+  validation {
+    condition = anytrue([
+      for k, v in var.environments : v.is_default == true
+    ])
+    error_message = "At least one environment should be marked as default."
+  }
 }
 
 variable "essential_contacts" {

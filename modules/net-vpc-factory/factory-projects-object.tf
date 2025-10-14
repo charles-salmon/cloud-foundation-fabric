@@ -45,42 +45,45 @@ locals {
       parent        = null
       prefix        = null
       project_reuse = merge({
-        use_data_source    = true
-        project_attributes = null
+        use_data_source = true
+        attributes      = null
         }, try(local._projects_config.data_defaults.project_reuse, {
-          use_data_source    = true
-          project_attributes = null
+          use_data_source = true
+          attributes      = null
         })
       )
       service_encryption_key_ids = {}
       services                   = []
-      shared_vpc_service_config = merge({
-        host_project             = null
-        network_users            = []
-        service_agent_iam        = {}
-        service_agent_subnet_iam = {}
-        service_iam_grants       = []
-        network_subnet_users     = {}
-        }, try(local._projects_config.data_defaults.shared_vpc_service_config, {
+      shared_vpc_service_config = merge(
+        {
           host_project             = null
+          iam_bindings_additive    = {}
           network_users            = []
           service_agent_iam        = {}
           service_agent_subnet_iam = {}
           service_iam_grants       = []
           network_subnet_users     = {}
-        })
+        },
+        try(local._projects_config.data_defaults.shared_vpc_service_config, {
+          host_project             = null
+          iam_bindings_additive    = {}
+          network_users            = []
+          service_agent_iam        = {}
+          service_agent_subnet_iam = {}
+          service_iam_grants       = []
+          network_subnet_users     = {}
+          }
+        )
       )
       storage_location = null
       tag_bindings     = {}
       service_accounts = {}
       vpc_sc = merge({
-        perimeter_name    = null
-        perimeter_bridges = []
-        is_dry_run        = false
+        perimeter_name = null
+        is_dry_run     = false
         }, try(local._projects_config.data_defaults.vpc_sc, {
-          perimeter_name    = null
-          perimeter_bridges = []
-          is_dry_run        = false
+          perimeter_name = null
+          is_dry_run     = false
         })
       )
       logging_data_access = {}
@@ -114,9 +117,8 @@ locals {
       vpc_sc = try(
         merge(
           {
-            perimeter_name    = null
-            perimeter_bridges = []
-            is_dry_run        = false
+            perimeter_name = null
+            is_dry_run     = false
           },
           local._projects_config.data_overrides.vpc_sc
         ),
@@ -215,8 +217,8 @@ locals {
         try(v.project_reuse, null) != null
         ? merge(
           {
-            use_data_source    = true
-            project_attributes = null
+            use_data_source = true
+            attributes      = null
           },
           v.project_reuse
         )
@@ -245,6 +247,7 @@ locals {
         ? merge(
           {
             host_project             = null
+            iam_bindings_additive    = {}
             network_users            = []
             service_agent_iam        = {}
             service_agent_subnet_iam = {}
@@ -284,9 +287,8 @@ locals {
         : (
           try(v.vpc_sc, null) != null
           ? merge({
-            perimeter_name    = null
-            perimeter_bridges = []
-            is_dry_run        = false
+            perimeter_name = null
+            is_dry_run     = false
           }, v.vpc_sc)
           : local.__projects_config.data_defaults.vpc_sc
         )
@@ -296,6 +298,7 @@ locals {
         try(v.logging_data_access, null),
         local.__projects_config.data_defaults.logging_data_access
       )
+      quotas = try(v.quotas, {})
     })
   }
   # tflint-ignore: terraform_unused_declarations

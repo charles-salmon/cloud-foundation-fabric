@@ -127,6 +127,22 @@ resource "google_sql_database_instance" "primary" {
       }
     }
 
+    dynamic "connection_pool_config" {
+      # Only available for PostgreSQL on Enterprise Plus edition.
+      for_each = (var.managed_connection_pooling_config.enabled && local.is_postgres && var.edition == "ENTERPRISE_PLUS") ? [1] : []
+      content {
+        connection_pooling_enabled = true
+        dynamic "flags" {
+          for_each = var.managed_connection_pooling_config.flags
+          iterator = flag
+          content {
+            name  = flag.key
+            value = flag.value
+          }
+        }
+      }
+    }
+
     dynamic "data_cache_config" {
       for_each = var.edition == "ENTERPRISE_PLUS" ? [1] : []
       content {
@@ -215,12 +231,12 @@ resource "google_sql_database_instance" "replicas" {
     disk_autoresize_limit       = var.disk_autoresize_limit
     disk_size                   = var.disk_size
     disk_type                   = var.disk_type
-    # availability_type = var.availability_type
-    user_labels           = var.labels
-    activation_policy     = var.activation_policy
-    collation             = var.collation
-    connector_enforcement = var.connector_enforcement
-    time_zone             = var.time_zone
+    availability_type           = each.value.availability_type
+    user_labels                 = var.labels
+    activation_policy           = var.activation_policy
+    collation                   = var.collation
+    connector_enforcement       = var.connector_enforcement
+    time_zone                   = var.time_zone
 
 
     ip_configuration {
@@ -333,3 +349,4 @@ resource "google_sql_ssl_cert" "client_certificates" {
   instance    = google_sql_database_instance.primary.name
   common_name = each.key
 }
+

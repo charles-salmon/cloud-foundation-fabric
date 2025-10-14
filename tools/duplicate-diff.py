@@ -18,15 +18,16 @@
 import filecmp
 import sys
 
-duplicates = [
+duplicates = [  #
     [
-        "modules/net-vpc-factory/factory-projects-object.tf",
-        "modules/project-factory/factory-projects-object.tf",
-        # data factory
+        "fast/stages/2-networking-a-simple/data/dns-policy-rules.yaml",
+        "fast/stages/2-networking-b-nva/data/dns-policy-rules.yaml",
+        "fast/stages/2-networking-c-separate-envs/data/dns-policy-rules.yaml",
     ],
     [
-        "fast/stages/0-bootstrap/identity-providers-wfif-defs.tf",
-        "fast/stages/2-secops/identity-providers-defs.tf",
+        "fast/stages/2-networking-a-simple/data/cidrs.yaml",
+        "fast/stages/2-networking-b-nva/data/cidrs.yaml",
+        "fast/stages/2-networking-c-separate-envs/data/cidrs.yaml",
     ]
 ]
 

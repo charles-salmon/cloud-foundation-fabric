@@ -1,5 +1,5 @@
 /**
- * Copyright 2024 Google LLC
+ * Copyright 2025 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -176,6 +176,16 @@ variable "maintenance_config" {
   }
 }
 
+variable "managed_connection_pooling_config" {
+  description = "Configuration for Managed Connection Pooling. NOTE: This feature is only available for PostgreSQL on Enterprise Plus edition instances."
+  type = object({
+    enabled = optional(bool, false)
+    flags   = optional(map(string), {})
+  })
+  default  = {}
+  nullable = false
+}
+
 variable "name" {
   description = "Name of primary instance."
   type        = string
@@ -239,10 +249,11 @@ variable "region" {
 }
 
 variable "replicas" {
-  description = "Map of NAME=> {REGION, KMS_KEY} for additional read replicas. Set to null to disable replica creation."
+  description = "Map of NAME=> {REGION, KMS_KEY, AVAILABILITY_TYPE} for additional read replicas. Set to null to disable replica creation."
   type = map(object({
     region              = string
     encryption_key_name = optional(string)
+    availability_type   = optional(string)
   }))
   default  = {}
   nullable = false
